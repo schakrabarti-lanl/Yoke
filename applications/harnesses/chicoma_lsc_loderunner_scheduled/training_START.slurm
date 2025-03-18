@@ -11,13 +11,13 @@
 # partition. There are optional other constraints. Namely, `gpu80` and
 # `gpu40only`. 
 
-#SBATCH --job-name=loderunner_chfe_study<studyIDX>
+#SBATCH --job-name=loderunner_chfe_scheduled_sampling_study<studyIDX>
 #SBATCH --account=w25_artimis_g
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=64
 #SBATCH --partition=gpu
 #SBATCH --constraint=gpu40
-#SBATCH --time=16:00:00
+#SBATCH --time=10:00:00
 #SBATCH --output=study<studyIDX>_epoch0001.out
 #SBATCH --error=study<studyIDX>_epoch0001.err
 #SBATCH -vvv
