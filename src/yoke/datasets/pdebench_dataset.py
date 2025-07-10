@@ -1,5 +1,6 @@
 """Custom dataset class specialized for a new data source (PDEBench).
-   Currently, it only handles compNS dataset."""
+Currently, it only handles compNS dataset.
+"""
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -8,13 +9,12 @@ from yoke.datasets.hdf5_datasets import CompNSDataset
 
 class CompNSLodeRunnerDataset(Dataset):
     def __init__(self, root_dir, split='train', n_steps=2, dt=1, transform=None):
-        """
-        Args:
-            root_dir (str): Path to folder containing HDF5 files.
-            split (str): 'train', 'val', or 'test'
-            n_steps (int): Number of input steps (T).
-            dt (int): Time delta between steps.
-            transform (callable): Optional transform (e.g., ResizePadCrop)
+        """Args:
+        root_dir (str): Path to folder containing HDF5 files.
+        split (str): 'train', 'val', or 'test'
+        n_steps (int): Number of input steps (T).
+        dt (int): Time delta between steps.
+        transform (callable): Optional transform (e.g., ResizePadCrop)
         """
         self.dataset = CompNSDataset(
             path=root_dir,

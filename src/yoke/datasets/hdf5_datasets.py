@@ -4,7 +4,6 @@ https://github.com/PolymathicAI/multiple_physics_pretraining
 import torch
 import torch.nn
 import numpy as np
-import os
 from torch.utils.data import Dataset
 import h5py
 import glob
@@ -12,8 +11,7 @@ import glob
 broken_paths = ['']
 
 class BaseHDF5DirectoryDataset(Dataset):
-    """
-    Base class for data loaders. Returns data in T x B x C x H x W format.
+    """Base class for data loaders. Returns data in T x B x C x H x W format.
 
     Note - doesn't currently normalize because the data is on wildly different
     scales but probably should.
@@ -33,7 +31,7 @@ class BaseHDF5DirectoryDataset(Dataset):
         split_level (str): 'sample' or 'file' - whether to split by samples within a file
                         (useful for data segmented by parameters) or file (mostly INS right now)
     """
-    def __init__(self, path, include_string='', n_steps=1, dt=1, split='train', 
+    def __init__(self, path, include_string='', n_steps=1, dt=1, split='train',
                  train_val_test=None, subname=None, extra_specific=False):
         super().__init__()
         self.path = path
@@ -55,17 +53,16 @@ class BaseHDF5DirectoryDataset(Dataset):
             self.title = self.more_specific_title(self.type, path, include_string)
         else:
             self.title = self.type
-        
+
 
     def get_name(self, full_name=False):
         if full_name:
             return self.subname + '_' + self.type
         else:
             return self.type
-    
+
     def more_specific_title(self, type, path, include_string):
-        """
-        Override this to add more info to the dataset name
+        """Override this to add more info to the dataset name
         """
         return type
 
@@ -73,7 +70,7 @@ class BaseHDF5DirectoryDataset(Dataset):
     def _specifics():
         # Sets self.field_names, self.dataset_type
         raise NotImplementedError # Per dset
-    
+
     def get_per_file_dsets(self):
         if self.split_level == 'file' or len(self.files_paths) == 1:
             return [self]
@@ -88,7 +85,7 @@ class BaseHDF5DirectoryDataset(Dataset):
 
     def _get_specific_stats(self, f):
         raise NotImplementedError # Per dset
-    
+
     def _get_specific_bcs(self, f):
         raise NotImplementedError # Per dset
 
@@ -106,7 +103,7 @@ class BaseHDF5DirectoryDataset(Dataset):
         self.offsets = [0]
         file_paths = []
         for file in self.files_paths:
-            # Total hack to avoid complications from folder with two sizes. 
+            # Total hack to avoid complications from folder with two sizes.
             if len(self.include_string) > 0 and self.include_string not in file:
                 continue
             elif file in broken_paths:
@@ -117,7 +114,7 @@ class BaseHDF5DirectoryDataset(Dataset):
                     with h5py.File(file, 'r') as _f:
                         samples, steps = self._get_specific_stats(_f)
                         if steps-self.n_steps-(self.dt-1) < 1:
-                            print('WARNING: File {} has {} steps, but n_steps is {}. Setting file steps = max allowable.'.format(file, steps, self.n_steps))
+                            print(f'WARNING: File {file} has {steps} steps, but n_steps is {self.n_steps}. Setting file steps = max allowable.')
                             file_nsteps = steps - self.dt
                         else:
                             file_nsteps = self.n_steps
@@ -138,8 +135,8 @@ class BaseHDF5DirectoryDataset(Dataset):
                         self.file_samples.append(split_samples)
                         self.offsets.append(self.offsets[-1]+(steps-file_nsteps-(self.dt-1))*split_samples)
                 except:
-                    print('WARNING: Failed to open file {}. Continuing without it.'.format(file))
-                    raise RuntimeError('Failed to open file {}'.format(file))
+                    print(f'WARNING: Failed to open file {file}. Continuing without it.')
+                    raise RuntimeError(f'Failed to open file {file}')
         # print(self.file_steps, self.file_samples)
         self.files_paths = file_paths
         self.offsets[0] = -1 # Just to make sure it doesn't put us in file -1
@@ -152,7 +149,7 @@ class BaseHDF5DirectoryDataset(Dataset):
                 self.split_offset = 0
                 self.len = self.offsets[-1]
             else:
-                print('Using train/val/test split: {}'.format(self.train_val_test))
+                print(f'Using train/val/test split: {self.train_val_test}')
                 total_samples = sum(self.file_samples)
                 ideal_split_offsets = [int(self.train_val_test[i]*total_samples) for i in range(3)]
                 # Doing this the naive way because I only need to do it once
@@ -173,8 +170,8 @@ class BaseHDF5DirectoryDataset(Dataset):
                 self.split_offset = start_ind
                 self.len = end_ind - start_ind
             # else:
-                
-                
+
+
     def _open_file(self, file_ind):
         _file = h5py.File(self.files_paths[file_ind], 'r')
         self.files[file_ind] = _file
@@ -191,7 +188,7 @@ class BaseHDF5DirectoryDataset(Dataset):
             sample_idx = (local_idx + self.split_offsets[file_idx]) // self.file_steps[file_idx]
         else:
             sample_idx = local_idx // self.file_steps[file_idx]
-        time_idx = local_idx % self.file_steps[file_idx] 
+        time_idx = local_idx % self.file_steps[file_idx]
 
         #open image file
         if self.files[file_idx] is None:
@@ -210,7 +207,7 @@ class BaseHDF5DirectoryDataset(Dataset):
 
     def __len__(self):
         return self.len
-    
+
 
 class SWEDataset(BaseHDF5DirectoryDataset):
     @staticmethod
@@ -226,14 +223,14 @@ class SWEDataset(BaseHDF5DirectoryDataset):
         samples = list(f.keys())
         steps = f[samples[0]]['data'].shape[0]
         return len(samples), steps
-    
+
     def _get_specific_bcs(self, f):
         return [0, 0] # Non-periodic
 
     def _reconstruct_sample(self, file, sample_idx, time_idx, n_steps):
         samples = list(file.keys())
         return file[samples[sample_idx]]['data'][time_idx-n_steps*self.dt:time_idx+self.dt].transpose(0, 3, 1, 2)
-    
+
 class DiffRe2DDataset(BaseHDF5DirectoryDataset):
     @staticmethod
     def _specifics():
@@ -248,17 +245,16 @@ class DiffRe2DDataset(BaseHDF5DirectoryDataset):
         samples = list(f.keys())
         steps = f[samples[0]]['data'].shape[0]
         return len(samples), steps
-    
+
     def _get_specific_bcs(self, f):
         return [0, 0] # Non-periodic
 
     def _reconstruct_sample(self, file, sample_idx, time_idx, n_steps):
         samples = list(file.keys())
         return file[samples[sample_idx]]['data'][time_idx-n_steps*self.dt:time_idx+self.dt].transpose(0, 3, 1, 2)
-    
+
 class IncompNSDataset(BaseHDF5DirectoryDataset):
-    """
-    Order Vx, Vy, "particles"
+    """Order Vx, Vy, "particles"
     """
     @staticmethod
     def _specifics():
@@ -270,7 +266,7 @@ class IncompNSDataset(BaseHDF5DirectoryDataset):
         return time_index, sample_index, field_names, type, split_level
 
     def _get_specific_stats(self, f):
-        samples = f['velocity'].shape[0] 
+        samples = f['velocity'].shape[0]
         steps = f['velocity'].shape[1]# Per dset
         return samples, steps
 
@@ -279,13 +275,12 @@ class IncompNSDataset(BaseHDF5DirectoryDataset):
         particles = file['particles'][sample_idx, time_idx-n_steps*self.dt:time_idx+self.dt]
         comb =  np.concatenate([velocity, particles], -1)
         return comb.transpose((0, 3, 1, 2))
-    
+
     def _get_specific_bcs(self, f):
         return [0, 0] # Non-periodic
-    
+
 class PDEArenaINS(BaseHDF5DirectoryDataset):
-    """
-    Order Vx, Vy, density, pressure
+    """Order Vx, Vy, density, pressure
     """
     @staticmethod
     def _specifics():
@@ -297,13 +292,12 @@ class PDEArenaINS(BaseHDF5DirectoryDataset):
         return time_index, sample_index, field_names, type, split_level
 
     def _get_specific_stats(self, f):
-        samples = f['Vx'].shape[0] 
+        samples = f['Vx'].shape[0]
         steps = f['Vx'].shape[1]# Per dset
         return samples, steps
 
     def more_specific_title(self, type, path, include_string):
-        """
-        Override this to add more info to the dataset name
+        """Override this to add more info to the dataset name
         """
         split_path = self.include_string.split('/')[-1].split('_')
         buoy = split_path[-3]
@@ -316,13 +310,12 @@ class PDEArenaINS(BaseHDF5DirectoryDataset):
         density = file['u'][sample_idx, time_idx-n_steps*self.dt:time_idx+self.dt]
         comb =  np.stack([vx, vy, density], 1)
         return comb#.transpose((0, 3, 1, 2))
-    
+
     def _get_specific_bcs(self, f):
         return [0, 0] # Not Periodic
-    
+
 class CompNSDataset(BaseHDF5DirectoryDataset):
-    """
-    Order Vx, Vy, density, pressure
+    """Order Vx, Vy, density, pressure
     """
     @staticmethod
     def _specifics():
@@ -334,13 +327,12 @@ class CompNSDataset(BaseHDF5DirectoryDataset):
         return time_index, sample_index, field_names, type, split_level
 
     def _get_specific_stats(self, f):
-        samples = f['Vx'].shape[0] 
+        samples = f['Vx'].shape[0]
         steps = f['Vx'].shape[1]# Per dset
         return samples, steps
 
     def more_specific_title(self, type, path, include_string):
-        """
-        Override this to add more info to the dataset name
+        """Override this to add more info to the dataset name
         """
         cns_path = self.include_string.split('/')[-1].split('_')
         ic = cns_path[2]
@@ -357,13 +349,12 @@ class CompNSDataset(BaseHDF5DirectoryDataset):
 
         comb =  np.stack([vx, vy, density, p], 1)
         return comb#.transpose((0, 3, 1, 2))
-    
+
     def _get_specific_bcs(self, f):
         return [1, 1] # Periodic
-    
+
 class BurgersDataset(BaseHDF5DirectoryDataset):
-    """
-    Order Vx, Vy, density, pressure
+    """Order Vx, Vy, density, pressure
     """
     @staticmethod
     def _specifics():
@@ -375,7 +366,7 @@ class BurgersDataset(BaseHDF5DirectoryDataset):
         return time_index, sample_index, field_names, type, split_level
 
     def _get_specific_stats(self, f):
-        samples = f['tensor'].shape[0] 
+        samples = f['tensor'].shape[0]
         steps = f['tensor'].shape[1]# Per dset
         return samples, steps
 
@@ -384,10 +375,10 @@ class BurgersDataset(BaseHDF5DirectoryDataset):
         # print(vx.shape)
         vx = vx[:, None, :, None]
         return vx#.transpose((0, 3, 1, 2))
-    
+
     def _get_specific_bcs(self, f):
         return [1, 1] # Periodic
-    
+
 class DiffSorb1DDataset(BaseHDF5DirectoryDataset):
     @staticmethod
     def _specifics():
@@ -402,7 +393,7 @@ class DiffSorb1DDataset(BaseHDF5DirectoryDataset):
         samples = list(f.keys())
         steps = f[samples[0]]['data'].shape[0]
         return len(samples), steps
-    
+
     def _get_specific_bcs(self, f):
         return [0, 0] # Non-periodic
 
@@ -410,4 +401,4 @@ class DiffSorb1DDataset(BaseHDF5DirectoryDataset):
         samples = list(file.keys())
         return file[samples[sample_idx]]['data'][time_idx-n_steps*self.dt:time_idx+self.dt].transpose(0, 2, 1)[:, :, :, None]
 
- 
+
