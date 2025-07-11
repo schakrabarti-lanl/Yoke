@@ -3,7 +3,6 @@
 import torch
 import torch.nn
 import numpy as np
-#import os
 from torch.utils.data import Dataset
 import h5py
 from typing import Optional

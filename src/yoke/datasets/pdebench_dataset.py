@@ -91,4 +91,3 @@ class CompNSDataModule(pl.LightningDataModule):
         return DataLoader(
             self.val_set, batch_size=self.batch_size, shuffle=False, num_workers=4
         )
-
